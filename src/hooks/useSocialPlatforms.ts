@@ -105,6 +105,7 @@ export const useSocialPlatforms = (walletAddress?: string) => {
           platform_username: username,
           is_connected: true,
           wallet_address: walletAddress,
+          user_id: walletAddress, // Use wallet address as user_id for Web3 compatibility
         })
         .select()
         .single();

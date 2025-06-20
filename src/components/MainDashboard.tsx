@@ -64,7 +64,7 @@ const MainDashboard = ({
       />
 
       {/* Unified Social Feed */}
-      <UnifiedFeed userId={walletAddress} />
+      <UnifiedFeed walletAddress={walletAddress} />
 
       {/* Social Feeds Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
