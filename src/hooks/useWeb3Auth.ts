@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { API_ENDPOINTS } from '@/config/api';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Web3AuthState {
   isConnected: boolean;
@@ -76,29 +76,20 @@ export const useWeb3Auth = () => {
       const walletAddress = accounts[0];
       console.log('Wallet address obtained:', walletAddress);
 
-      // Get nonce from FastAPI backend
-      console.log('Requesting nonce from backend...');
-      const nonceResponse = await fetch(API_ENDPOINTS.nonce, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          wallet_address: walletAddress,
-          chain_id: 1, // Ethereum mainnet
-          wallet_type: 'metamask'
-        }),
+      // Get nonce from Supabase function
+      console.log('Requesting nonce from Supabase...');
+      const { data: nonceData, error: nonceError } = await supabase.rpc('generate_web3_nonce', {
+        p_wallet_address: walletAddress,
+        p_chain_id: 1,
+        p_wallet_type: 'metamask'
       });
 
-      console.log('Nonce response status:', nonceResponse.status);
-      
-      if (!nonceResponse.ok) {
-        const errorText = await nonceResponse.text();
-        console.error('Nonce request failed:', errorText);
-        throw new Error(`Failed to get nonce: ${nonceResponse.status} ${errorText}`);
+      if (nonceError) {
+        console.error('Nonce request failed:', nonceError);
+        throw new Error(`Failed to get nonce: ${nonceError.message}`);
       }
 
-      const { nonce } = await nonceResponse.json();
+      const nonce = nonceData;
       console.log('Nonce received, requesting signature...');
 
       // Sign the nonce
@@ -107,31 +98,21 @@ export const useWeb3Auth = () => {
         params: [nonce, walletAddress],
       });
 
-      console.log('Signature obtained, verifying with backend...');
+      console.log('Signature obtained, verifying with Supabase...');
 
       // Verify signature and authenticate
-      const authResponse = await fetch(API_ENDPOINTS.verify, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          wallet_address: walletAddress,
-          signature: signature,
-          chain_id: 1,
-          wallet_type: 'metamask'
-        }),
+      const { data: authData, error: authError } = await supabase.rpc('verify_web3_signature', {
+        p_wallet_address: walletAddress,
+        p_signature: signature,
+        p_chain_id: 1,
+        p_wallet_type: 'metamask'
       });
 
-      console.log('Auth response status:', authResponse.status);
-
-      if (!authResponse.ok) {
-        const errorText = await authResponse.text();
-        console.error('Authentication failed:', errorText);
-        throw new Error(`Authentication failed: ${authResponse.status} ${errorText}`);
+      if (authError) {
+        console.error('Authentication failed:', authError);
+        throw new Error(`Authentication failed: ${authError.message}`);
       }
 
-      const authData: Web3AuthResponse = await authResponse.json();
       console.log('Authentication successful!');
 
       // Store authentication data
@@ -158,11 +139,7 @@ export const useWeb3Auth = () => {
       let errorMessage = "Failed to connect wallet";
       
       if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch')) {
-          errorMessage = "Cannot connect to backend server. Please check your internet connection and try again.";
-        } else {
-          errorMessage = error.message;
-        }
+        errorMessage = error.message;
       }
       
       toast({

@@ -463,6 +463,74 @@ export type Database = {
         }
         Relationships: []
       }
+      web3_auth_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          token_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          token_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          token_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web3_auth_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "web3_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web3_users: {
+        Row: {
+          chain_id: number
+          created_at: string
+          id: string
+          is_active: boolean | null
+          nonce: string | null
+          updated_at: string
+          wallet_address: string
+          wallet_type: string
+        }
+        Insert: {
+          chain_id?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          nonce?: string | null
+          updated_at?: string
+          wallet_address: string
+          wallet_type?: string
+        }
+        Update: {
+          chain_id?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          nonce?: string | null
+          updated_at?: string
+          wallet_address?: string
+          wallet_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -471,6 +539,23 @@ export type Database = {
       generate_nonce: {
         Args: { user_id: string; wallet_address: string }
         Returns: string
+      }
+      generate_web3_nonce: {
+        Args: {
+          p_wallet_address: string
+          p_chain_id?: number
+          p_wallet_type?: string
+        }
+        Returns: string
+      }
+      verify_web3_signature: {
+        Args: {
+          p_wallet_address: string
+          p_signature: string
+          p_chain_id?: number
+          p_wallet_type?: string
+        }
+        Returns: Json
       }
     }
     Enums: {
