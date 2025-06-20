@@ -13,46 +13,29 @@ serve(async (req) => {
   }
 
   try {
-    const { platformId } = await req.json();
-    
+    console.log('Scheduled scraper triggered at:', new Date().toISOString());
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('Syncing social feeds for platform:', platformId);
-
-    // Get the specific platform
-    const { data: platform, error: platformError } = await supabaseClient
-      .from('social_platforms')
-      .select('*')
-      .eq('id', platformId)
-      .single();
-
-    if (platformError) {
-      throw platformError;
-    }
-
-    // Call the social-scraper function to scrape this specific platform
+    // Call the social-scraper function
     const { data, error } = await supabaseClient.functions.invoke('social-scraper', {
-      body: { action: 'scrape', platformId: platformId }
+      body: { action: 'scrape' }
     });
 
     if (error) {
       throw error;
     }
 
-    // Update the platform's last sync time
-    await supabaseClient
-      .from('social_platforms')
-      .update({ last_sync_at: new Date().toISOString() })
-      .eq('id', platformId);
+    console.log('Scheduled scraping completed:', data);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Successfully synced ${platform.platform_name}`,
-        data: data 
+        message: 'Scheduled scraping completed',
+        result: data 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -61,7 +44,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error syncing social feeds:', error);
+    console.error('Error in scheduled scraper:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

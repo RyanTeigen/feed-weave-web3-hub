@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import ConnectWallet from "@/components/ConnectWallet";
 import ProfileStats from "@/components/ProfileStats";
 import NavigationSidebar from "@/components/NavigationSidebar";
 import RealSocialFeedCard from "@/components/RealSocialFeedCard";
+import UnifiedFeed from "@/components/UnifiedFeed";
 import { useSocialPlatforms } from "@/hooks/useSocialPlatforms";
 import { useToast } from "@/hooks/use-toast";
 
@@ -224,6 +224,9 @@ const Index = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Unified Social Feed */}
+              <UnifiedFeed userId={walletAddress} />
 
               {/* Social Feeds Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
