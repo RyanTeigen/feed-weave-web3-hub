@@ -4,67 +4,71 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Wallet, Plus, ExternalLink, Settings, TrendingUp, Menu } from "lucide-react";
+import { Wallet, Plus, ExternalLink, Settings, TrendingUp, Menu, RefreshCw } from "lucide-react";
 import ConnectWallet from "@/components/ConnectWallet";
-import SocialFeedCard from "@/components/SocialFeedCard";
 import ProfileStats from "@/components/ProfileStats";
 import NavigationSidebar from "@/components/NavigationSidebar";
+import RealSocialFeedCard from "@/components/RealSocialFeedCard";
+import { useSocialPlatforms } from "@/hooks/useSocialPlatforms";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { toast } = useToast();
+  
+  const { 
+    platforms, 
+    posts, 
+    isLoading, 
+    connectPlatform, 
+    syncPlatform, 
+    refreshData 
+  } = useSocialPlatforms();
 
-  // Mock data for social feeds
-  const socialFeeds = [
-    {
-      platform: "Twitter",
-      username: "@web3creator",
-      followers: "12.5K",
-      posts: [
-        {
-          content: "Just launched our new DeFi aggregator! 🚀 The future of decentralized finance is here.",
-          timestamp: "2 hours ago",
-          engagement: { likes: 45, retweets: 12, comments: 8 }
-        },
-        {
-          content: "Building in Web3 is more exciting than ever. The ecosystem is growing rapidly! 💪",
-          timestamp: "5 hours ago",
-          engagement: { likes: 78, retweets: 23, comments: 15 }
-        }
-      ]
-    },
-    {
-      platform: "Discord",
-      serverName: "Web3 Builders",
-      members: "5.2K",
-      recentActivity: [
-        {
-          user: "alice.eth",
-          message: "New governance proposal is live! Check it out 👀",
-          timestamp: "1 hour ago"
-        },
-        {
-          user: "bob.crypto",
-          message: "Great discussion on Layer 2 solutions today",
-          timestamp: "3 hours ago"
-        }
-      ]
-    },
-    {
-      platform: "Instagram",
-      username: "@web3lifestyle",
-      followers: "8.9K",
-      posts: [
-        {
-          imageUrl: "/placeholder.svg",
-          caption: "Behind the scenes at our Web3 meetup! Amazing community 🌟",
-          timestamp: "4 hours ago",
-          engagement: { likes: 234, comments: 18 }
-        }
-      ]
-    }
+  // Available platforms to connect
+  const availablePlatforms = [
+    { name: 'Twitter', username: 'web3creator' },
+    { name: 'LinkedIn', username: 'web3-builder' },
+    { name: 'Instagram', username: 'web3lifestyle' },
+    { name: 'Discord', username: 'Web3 Hub' },
+    { name: 'Ghost', username: 'web3blog' },
   ];
+
+  const handleConnectPlatform = async (platformName: string) => {
+    if (!isWalletConnected) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet first to use social media features",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const platform = availablePlatforms.find(p => p.name === platformName);
+    await connectPlatform(platformName.toLowerCase(), platform?.username);
+  };
+
+  const isPlatformConnected = (platformName: string) => {
+    return platforms.some(p => 
+      p.platform_name.toLowerCase() === platformName.toLowerCase() && p.is_connected
+    );
+  };
+
+  const getPlatformUsername = (platformName: string) => {
+    const platform = platforms.find(p => 
+      p.platform_name.toLowerCase() === platformName.toLowerCase()
+    );
+    return platform?.platform_username;
+  };
+
+  const getTotalEngagement = () => {
+    return posts.reduce((total, post) => {
+      const metrics = post.engagement_metrics;
+      return total + (metrics.likes || 0) + (metrics.comments || 0) + (metrics.shares || 0);
+    }, 0);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-blue-50">
@@ -184,30 +188,62 @@ const Index = () => {
               {/* Quick Actions */}
               <Card className="bg-white/70 backdrop-blur-sm border-cyan-200/50 shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-slate-800 flex items-center gap-2">
-                    <Plus className="h-5 w-5" />
-                    Connect Social Platforms
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-slate-800 flex items-center gap-2">
+                      <Plus className="h-5 w-5" />
+                      Connect Social Platforms
+                    </CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshData}
+                      disabled={isLoading}
+                      className="border-cyan-300 hover:bg-cyan-50 text-slate-700"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Button className="autheo-gradient hover:opacity-90 text-white mobile-touch">
-                      Connect Twitter
-                    </Button>
-                    <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white mobile-touch">
-                      Connect Discord
-                    </Button>
-                    <Button className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white mobile-touch">
-                      Connect Instagram
-                    </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {availablePlatforms.map((platform) => (
+                      <Button
+                        key={platform.name}
+                        onClick={() => handleConnectPlatform(platform.name)}
+                        disabled={isPlatformConnected(platform.name)}
+                        className={`${
+                          isPlatformConnected(platform.name)
+                            ? 'bg-teal-500 hover:bg-teal-600 text-white'
+                            : 'autheo-gradient hover:opacity-90 text-white'
+                        } mobile-touch`}
+                      >
+                        {isPlatformConnected(platform.name) ? '✓ Connected' : 'Connect'} {platform.name}
+                      </Button>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Social Feeds Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {socialFeeds.map((feed, index) => (
-                  <SocialFeedCard key={index} feed={feed} />
+                {availablePlatforms.map((platform) => (
+                  <RealSocialFeedCard
+                    key={platform.name}
+                    posts={posts}
+                    platformName={platform.name}
+                    username={getPlatformUsername(platform.name)}
+                    isConnected={isPlatformConnected(platform.name)}
+                    onSync={() => {
+                      const connectedPlatform = platforms.find(p => 
+                        p.platform_name.toLowerCase() === platform.name.toLowerCase()
+                      );
+                      if (connectedPlatform) {
+                        syncPlatform(connectedPlatform.id);
+                      }
+                    }}
+                    isLoading={isLoading}
+                  />
                 ))}
               </div>
 
@@ -222,20 +258,24 @@ const Index = () => {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">26.7K</div>
-                      <div className="text-sm text-white/80">Total Followers</div>
+                      <div className="text-2xl font-bold text-white">
+                        {platforms.filter(p => p.is_connected).length}
+                      </div>
+                      <div className="text-sm text-white/80">Connected Platforms</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">1.2K</div>
-                      <div className="text-sm text-white/80">This Week</div>
+                      <div className="text-2xl font-bold text-white">{posts.length}</div>
+                      <div className="text-sm text-white/80">Total Posts</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">89%</div>
-                      <div className="text-sm text-white/80">Engagement Rate</div>
+                      <div className="text-2xl font-bold text-white">{getTotalEngagement()}</div>
+                      <div className="text-sm text-white/80">Total Engagement</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">12</div>
-                      <div className="text-sm text-white/80">Platforms</div>
+                      <div className="text-2xl font-bold text-white">
+                        {platforms.filter(p => p.last_sync_at).length}
+                      </div>
+                      <div className="text-sm text-white/80">Recently Synced</div>
                     </div>
                   </div>
                 </CardContent>

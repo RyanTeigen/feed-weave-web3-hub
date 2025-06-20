@@ -293,6 +293,80 @@ export type Database = {
         }
         Relationships: []
       }
+      social_platforms: {
+        Row: {
+          created_at: string
+          id: string
+          is_connected: boolean | null
+          last_sync_at: string | null
+          platform_name: string
+          platform_username: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          platform_name: string
+          platform_username?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          platform_name?: string
+          platform_username?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      social_posts: {
+        Row: {
+          content: string | null
+          engagement_metrics: Json | null
+          fetched_at: string
+          id: string
+          media_urls: Json | null
+          platform_id: string | null
+          platform_post_id: string
+          posted_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          engagement_metrics?: Json | null
+          fetched_at?: string
+          id?: string
+          media_urls?: Json | null
+          platform_id?: string | null
+          platform_post_id: string
+          posted_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          engagement_metrics?: Json | null
+          fetched_at?: string
+          id?: string
+          media_urls?: Json | null
+          platform_id?: string | null
+          platform_post_id?: string
+          posted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "social_platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_interactions: {
         Row: {
           content_id: string
