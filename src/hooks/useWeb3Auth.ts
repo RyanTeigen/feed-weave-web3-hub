@@ -89,7 +89,7 @@ export const useWeb3Auth = () => {
         throw new Error(`Failed to get nonce: ${nonceError.message}`);
       }
 
-      const nonce = nonceData;
+      const nonce = nonceData as string;
       console.log('Nonce received, requesting signature...');
 
       // Sign the nonce
@@ -115,15 +115,18 @@ export const useWeb3Auth = () => {
 
       console.log('Authentication successful!');
 
+      // Cast the response to our expected type
+      const authResponse = authData as Web3AuthResponse;
+
       // Store authentication data
-      localStorage.setItem('web3_access_token', authData.access_token);
-      localStorage.setItem('web3_user', JSON.stringify(authData.user));
+      localStorage.setItem('web3_access_token', authResponse.access_token);
+      localStorage.setItem('web3_user', JSON.stringify(authResponse.user));
 
       setAuthState({
         isConnected: true,
-        walletAddress: authData.user.wallet_address,
+        walletAddress: authResponse.user.wallet_address,
         isConnecting: false,
-        user: authData.user,
+        user: authResponse.user,
       });
 
       toast({
