@@ -49,19 +49,20 @@ const ConnectWallet = ({ isConnected, onConnect, walletAddress }: ConnectWalletP
 
   if (isConnected) {
     return (
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="bg-green-500/10 border-green-400/30 text-green-300">
-          <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant="outline" className="bg-teal-50 border-teal-300 text-teal-700">
+          <div className="w-2 h-2 bg-teal-500 rounded-full mr-2"></div>
           Connected
         </Badge>
         <Button
           variant="outline"
           size="sm"
           onClick={copyAddress}
-          className="border-purple-400/30 hover:bg-purple-400/10 text-white"
+          className="border-cyan-300 hover:bg-cyan-50 text-slate-700 mobile-touch"
         >
           <Copy className="h-3 w-3 mr-1" />
-          {walletAddress}
+          <span className="hidden sm:inline">{walletAddress}</span>
+          <span className="sm:hidden">Copy</span>
         </Button>
       </div>
     );
@@ -71,7 +72,7 @@ const ConnectWallet = ({ isConnected, onConnect, walletAddress }: ConnectWalletP
     <Button
       onClick={connectMetaMask}
       disabled={isConnecting}
-      className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white border-0"
+      className="autheo-gradient hover:opacity-90 text-white border-0 mobile-touch"
     >
       <Wallet className="h-4 w-4 mr-2" />
       {isConnecting ? "Connecting..." : "Connect Wallet"}

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,20 +38,19 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Autheo Brand Colors */
+    --autheo-teal: 20 83% 65%;
+    --autheo-cyan: 186 100% 69%;
+    --autheo-blue: 217 91% 60%;
+    --autheo-dark-blue: 217 100% 35%;
   }
 
   .dark {
@@ -99,5 +99,25 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Autheo Brand Gradients */
+.autheo-gradient {
+  background: linear-gradient(135deg, #1dd1a1 0%, #55c5f0 50%, #3b82f6 100%);
+}
+
+.autheo-gradient-text {
+  background: linear-gradient(135deg, #1dd1a1 0%, #55c5f0 50%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Mobile-friendly touch targets */
+@media (max-width: 768px) {
+  .mobile-touch {
+    min-height: 44px;
+    min-width: 44px;
   }
 }

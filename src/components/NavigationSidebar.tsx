@@ -25,25 +25,32 @@ const NavigationSidebar = () => {
   ];
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-black/20 backdrop-blur-lg border-r border-purple-400/20 transition-all duration-300 z-40 ${
+    <div className={`h-full bg-white/80 backdrop-blur-lg border-r border-cyan-200/50 transition-all duration-300 ${
       isCollapsed ? 'w-16' : 'w-64'
     }`}>
       <div className="p-4">
         {/* Logo/Title */}
         <div className="flex items-center justify-between mb-8">
           {!isCollapsed && (
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                Web3 Hub
-              </h1>
-              <p className="text-xs text-slate-400">Decentralized Social</p>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/lovable-uploads/020d4211-02ff-4661-a8c0-465338e1837f.png" 
+                alt="Autheo Logo"
+                className="h-8 w-8"
+              />
+              <div>
+                <h1 className="text-xl font-bold autheo-gradient-text">
+                  Web3 Hub
+                </h1>
+                <p className="text-xs text-slate-500">Decentralized Social</p>
+              </div>
             </div>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-white hover:bg-white/10"
+            className="text-slate-600 hover:bg-cyan-50 mobile-touch lg:flex hidden"
           >
             {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
           </Button>
@@ -55,10 +62,10 @@ const NavigationSidebar = () => {
             <Button
               key={index}
               variant={item.active ? "secondary" : "ghost"}
-              className={`w-full justify-start text-left transition-all ${
+              className={`w-full justify-start text-left transition-all mobile-touch ${
                 item.active 
-                  ? "bg-purple-500/20 text-purple-300 border border-purple-400/30" 
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-cyan-50 text-cyan-700 border border-cyan-200" 
+                  : "text-slate-600 hover:text-slate-800 hover:bg-cyan-50/50"
               } ${isCollapsed ? 'px-2' : 'px-4'}`}
             >
               <item.icon className={`h-5 w-5 ${isCollapsed ? '' : 'mr-3'}`} />
@@ -66,7 +73,7 @@ const NavigationSidebar = () => {
                 <>
                   <span className="flex-1">{item.label}</span>
                   {item.count && (
-                    <Badge variant="outline" className="ml-auto border-purple-400/30 text-purple-300">
+                    <Badge variant="outline" className="ml-auto border-cyan-300 text-cyan-700 bg-cyan-50">
                       {item.count}
                     </Badge>
                   )}
@@ -78,13 +85,13 @@ const NavigationSidebar = () => {
 
         {/* Status Card */}
         {!isCollapsed && (
-          <Card className="mt-8 bg-gradient-to-r from-green-500/10 to-blue-500/10 border-green-400/20">
+          <Card className="mt-8 bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-200">
             <div className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-green-300 text-sm font-medium">System Status</span>
+                <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+                <span className="text-teal-700 text-sm font-medium">System Status</span>
               </div>
-              <p className="text-xs text-slate-400">All services operational</p>
+              <p className="text-xs text-slate-600">All services operational</p>
             </div>
           </Card>
         )}
