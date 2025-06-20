@@ -115,8 +115,8 @@ export const useWeb3Auth = () => {
 
       console.log('Authentication successful!');
 
-      // Cast the response to our expected type
-      const authResponse = authData as Web3AuthResponse;
+      // Cast the response to our expected type (first to unknown, then to our interface)
+      const authResponse = authData as unknown as Web3AuthResponse;
 
       // Store authentication data
       localStorage.setItem('web3_access_token', authResponse.access_token);
