@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -18,6 +17,28 @@ interface ScrapedPost {
   media_urls?: string[];
 }
 
+interface IngestPostData {
+  platform: string;
+  platform_post_id: string;
+  content?: string;
+  media_urls?: string[];
+  engagement_metrics?: Record<string, any>;
+  posted_at?: string;
+  author_username?: string;
+  author_id?: string;
+  metadata?: Record<string, any>;
+}
+
+interface IngestRequest {
+  posts: IngestPostData[];
+  user_id?: string;
+  platform_config?: {
+    platform_name: string;
+    platform_username?: string;
+    auto_create?: boolean;
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,6 +50,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    const url = new URL(req.url);
+    const pathname = url.pathname;
+
+    // Handle the new /ingest endpoint
+    if (pathname.endsWith('/ingest')) {
+      return await handleIngestEndpoint(req, supabaseClient);
+    }
+
+    // Handle existing scrape and feed endpoints
     const body = await req.json();
     const { action, platformId, user_id, limit } = body;
 
@@ -162,6 +192,192 @@ serve(async (req) => {
     );
   }
 });
+
+async function handleIngestEndpoint(req: Request, supabaseClient: any) {
+  try {
+    const ingestData: IngestRequest = await req.json();
+    
+    // Validate request structure
+    if (!ingestData.posts || !Array.isArray(ingestData.posts) || ingestData.posts.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request: posts array is required and must not be empty' 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
+
+    console.log(`Processing ${ingestData.posts.length} posts for ingestion`);
+
+    let platformId: string | null = null;
+
+    // Handle platform creation/lookup if platform_config is provided
+    if (ingestData.platform_config) {
+      const config = ingestData.platform_config;
+      
+      // Try to find existing platform
+      const { data: existingPlatform } = await supabaseClient
+        .from('social_platforms')
+        .select('id')
+        .eq('platform_name', config.platform_name)
+        .eq('user_id', ingestData.user_id || 'system')
+        .maybeSingle();
+
+      if (existingPlatform) {
+        platformId = existingPlatform.id;
+        console.log(`Using existing platform: ${platformId}`);
+      } else if (config.auto_create) {
+        // Create new platform
+        const { data: newPlatform, error: platformError } = await supabaseClient
+          .from('social_platforms')
+          .insert({
+            platform_name: config.platform_name,
+            platform_username: config.platform_username,
+            user_id: ingestData.user_id || 'system',
+            is_connected: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select('id')
+          .single();
+
+        if (platformError) {
+          console.error('Error creating platform:', platformError);
+          return new Response(
+            JSON.stringify({ 
+              error: 'Failed to create platform',
+              details: platformError.message 
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 500 
+            }
+          );
+        }
+
+        platformId = newPlatform.id;
+        console.log(`Created new platform: ${platformId}`);
+      }
+    }
+
+    // Process and validate posts
+    const processedPosts = [];
+    const errors = [];
+
+    for (let i = 0; i < ingestData.posts.length; i++) {
+      const post = ingestData.posts[i];
+      
+      try {
+        // Validate required fields
+        if (!post.platform || !post.platform_post_id) {
+          errors.push({
+            index: i,
+            error: 'Missing required fields: platform and platform_post_id'
+          });
+          continue;
+        }
+
+        // Process the post
+        const processedPost = {
+          platform_id: platformId,
+          platform_post_id: post.platform_post_id,
+          content: post.content || null,
+          media_urls: Array.isArray(post.media_urls) ? post.media_urls : [],
+          engagement_metrics: post.engagement_metrics || {},
+          posted_at: post.posted_at ? new Date(post.posted_at).toISOString() : new Date().toISOString(),
+          fetched_at: new Date().toISOString()
+        };
+
+        processedPosts.push(processedPost);
+      } catch (error) {
+        errors.push({
+          index: i,
+          error: `Processing error: ${error.message}`
+        });
+      }
+    }
+
+    if (processedPosts.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'No valid posts to process',
+          validation_errors: errors
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
+
+    // Insert posts into database
+    const { data: insertedPosts, error: insertError } = await supabaseClient
+      .from('social_posts')
+      .upsert(processedPosts, { 
+        onConflict: 'platform_id,platform_post_id',
+        ignoreDuplicates: false 
+      })
+      .select('id, platform_post_id');
+
+    if (insertError) {
+      console.error('Error inserting posts:', insertError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to insert posts',
+          details: insertError.message 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      );
+    }
+
+    // Update platform sync time if platform was used
+    if (platformId) {
+      await supabaseClient
+        .from('social_platforms')
+        .update({ last_sync_at: new Date().toISOString() })
+        .eq('id', platformId);
+    }
+
+    const response = {
+      success: true,
+      message: `Successfully processed ${processedPosts.length} posts`,
+      inserted_count: insertedPosts?.length || 0,
+      processed_count: processedPosts.length,
+      total_submitted: ingestData.posts.length,
+      platform_id: platformId,
+      validation_errors: errors.length > 0 ? errors : undefined
+    };
+
+    console.log('Ingestion completed:', response);
+
+    return new Response(
+      JSON.stringify(response),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    );
+
+  } catch (error) {
+    console.error('Error in ingest endpoint:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error.message 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
+      }
+    );
+  }
+}
 
 async function scrapePlatform(platform: any): Promise<ScrapedPost[]> {
   switch (platform.platform_name.toLowerCase()) {
