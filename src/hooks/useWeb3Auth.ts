@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { API_ENDPOINTS } from '@/config/api';
 
 interface Web3AuthState {
   isConnected: boolean;
@@ -77,7 +78,7 @@ export const useWeb3Auth = () => {
 
       // Get nonce from FastAPI backend
       console.log('Requesting nonce from backend...');
-      const nonceResponse = await fetch('http://localhost:8000/auth/nonce', {
+      const nonceResponse = await fetch(API_ENDPOINTS.nonce, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ export const useWeb3Auth = () => {
       console.log('Signature obtained, verifying with backend...');
 
       // Verify signature and authenticate
-      const authResponse = await fetch('http://localhost:8000/auth/verify', {
+      const authResponse = await fetch(API_ENDPOINTS.verify, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +159,7 @@ export const useWeb3Auth = () => {
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          errorMessage = "Cannot connect to backend server. Please ensure your FastAPI server is running on http://localhost:8000";
+          errorMessage = "Cannot connect to backend server. Please check your internet connection and try again.";
         } else {
           errorMessage = error.message;
         }
