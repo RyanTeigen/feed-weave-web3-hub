@@ -27,11 +27,10 @@ const Index = () => {
     refreshData 
   } = useSocialPlatforms();
 
-  // Available platforms to connect
+  // Available platforms to connect (removed Instagram)
   const availablePlatforms = [
     { name: 'Twitter', username: 'web3creator' },
     { name: 'LinkedIn', username: 'web3-builder' },
-    { name: 'Instagram', username: 'web3lifestyle' },
     { name: 'Discord', username: 'Web3 Hub' },
     { name: 'Ghost', username: 'web3blog' },
   ];
@@ -206,7 +205,7 @@ const Index = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {availablePlatforms.map((platform) => (
                       <Button
                         key={platform.name}

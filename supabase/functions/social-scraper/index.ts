@@ -29,17 +29,23 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const url = new URL(req.url);
-    const action = url.searchParams.get('action');
+    const body = await req.json();
+    const { action, platformId, user_id, limit } = body;
 
     if (action === 'scrape') {
       console.log('Starting social media scraping...');
       
-      // Get all connected platforms for all users
-      const { data: platforms, error: platformsError } = await supabaseClient
+      let platformsQuery = supabaseClient
         .from('social_platforms')
         .select('*')
         .eq('is_connected', true);
+
+      // If platformId is specified, filter to that specific platform
+      if (platformId) {
+        platformsQuery = platformsQuery.eq('id', platformId);
+      }
+
+      const { data: platforms, error: platformsError } = await platformsQuery;
 
       if (platformsError) {
         throw platformsError;
@@ -102,8 +108,7 @@ serve(async (req) => {
     }
 
     if (action === 'feed') {
-      const limit = parseInt(url.searchParams.get('limit') || '50');
-      const userId = url.searchParams.get('user_id');
+      const feedLimit = limit || 50;
 
       let query = supabaseClient
         .from('social_posts')
@@ -116,11 +121,11 @@ serve(async (req) => {
           )
         `)
         .order('posted_at', { ascending: false })
-        .limit(limit);
+        .limit(feedLimit);
 
       // Filter by user if specified
-      if (userId) {
-        query = query.eq('social_platforms.user_id', userId);
+      if (user_id) {
+        query = query.eq('social_platforms.user_id', user_id);
       }
 
       const { data: posts, error } = await query;
@@ -158,18 +163,13 @@ serve(async (req) => {
   }
 });
 
-// Mock scraping functions (replace with actual scraping logic)
 async function scrapePlatform(platform: any): Promise<ScrapedPost[]> {
-  const posts: ScrapedPost[] = [];
-  
   switch (platform.platform_name.toLowerCase()) {
     case 'twitter':
     case 'x':
       return await scrapeTwitter(platform);
     case 'linkedin':
       return await scrapeLinkedIn(platform);
-    case 'instagram':
-      return await scrapeInstagram(platform);
     case 'discord':
       return await scrapeDiscord(platform);
     case 'ghost':
@@ -181,43 +181,251 @@ async function scrapePlatform(platform: any): Promise<ScrapedPost[]> {
 }
 
 async function scrapeTwitter(platform: any): Promise<ScrapedPost[]> {
-  // Mock implementation - replace with actual Twitter API calls
   console.log(`Scraping Twitter for ${platform.platform_username}`);
   
-  // For now, return mock data
-  return [
-    {
-      source: 'twitter',
-      external_id: `tweet_${Date.now()}`,
-      author: platform.platform_username || 'user',
-      content: `Mock Twitter post from ${platform.platform_username}`,
-      url: `https://twitter.com/${platform.platform_username}/status/${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      engagement_metrics: {
-        likes: Math.floor(Math.random() * 100),
-        retweets: Math.floor(Math.random() * 50),
-        comments: Math.floor(Math.random() * 20)
+  // Twitter API v2 implementation
+  const bearerToken = Deno.env.get('TWITTER_BEARER_TOKEN');
+  if (!bearerToken) {
+    console.error('Twitter Bearer Token not configured');
+    return [];
+  }
+
+  try {
+    // Get user ID first
+    const userResponse = await fetch(
+      `https://api.twitter.com/2/users/by/username/${platform.platform_username}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
+        },
       }
+    );
+
+    if (!userResponse.ok) {
+      console.error('Failed to fetch Twitter user:', await userResponse.text());
+      return [];
     }
-  ];
+
+    const userData = await userResponse.json();
+    const userId = userData.data?.id;
+
+    if (!userId) {
+      console.error('User ID not found for Twitter username:', platform.platform_username);
+      return [];
+    }
+
+    // Fetch user's tweets
+    const tweetsResponse = await fetch(
+      `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=created_at,public_metrics,attachments&expansions=attachments.media_keys&media.fields=url,preview_image_url`,
+      {
+        headers: {
+          'Authorization': `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!tweetsResponse.ok) {
+      console.error('Failed to fetch tweets:', await tweetsResponse.text());
+      return [];
+    }
+
+    const tweetsData = await tweetsResponse.json();
+    const tweets = tweetsData.data || [];
+    const media = tweetsData.includes?.media || [];
+
+    return tweets.map((tweet: any) => {
+      const tweetMedia = tweet.attachments?.media_keys
+        ? tweet.attachments.media_keys.map((key: string) => {
+            const mediaItem = media.find((m: any) => m.media_key === key);
+            return mediaItem?.url || mediaItem?.preview_image_url;
+          }).filter(Boolean)
+        : [];
+
+      return {
+        source: 'twitter',
+        external_id: tweet.id,
+        author: platform.platform_username,
+        content: tweet.text,
+        url: `https://twitter.com/${platform.platform_username}/status/${tweet.id}`,
+        timestamp: tweet.created_at,
+        engagement_metrics: {
+          likes: tweet.public_metrics?.like_count || 0,
+          retweets: tweet.public_metrics?.retweet_count || 0,
+          comments: tweet.public_metrics?.reply_count || 0,
+          quotes: tweet.public_metrics?.quote_count || 0,
+        },
+        media_urls: tweetMedia,
+      };
+    });
+  } catch (error) {
+    console.error('Error scraping Twitter:', error);
+    return [];
+  }
 }
 
 async function scrapeLinkedIn(platform: any): Promise<ScrapedPost[]> {
   console.log(`Scraping LinkedIn for ${platform.platform_username}`);
-  return [];
-}
+  
+  // LinkedIn API implementation
+  const accessToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN');
+  if (!accessToken) {
+    console.error('LinkedIn Access Token not configured');
+    return [];
+  }
 
-async function scrapeInstagram(platform: any): Promise<ScrapedPost[]> {
-  console.log(`Scraping Instagram for ${platform.platform_username}`);
-  return [];
+  try {
+    // Get user profile first
+    const profileResponse = await fetch(
+      'https://api.linkedin.com/v2/people/~:(id,firstName,lastName)',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!profileResponse.ok) {
+      console.error('Failed to fetch LinkedIn profile:', await profileResponse.text());
+      return [];
+    }
+
+    const profileData = await profileResponse.json();
+    const personId = profileData.id;
+
+    // Fetch user's posts (shares)
+    const postsResponse = await fetch(
+      `https://api.linkedin.com/v2/shares?q=owners&owners=urn:li:person:${personId}&count=10&sortBy=CREATED_TIME`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!postsResponse.ok) {
+      console.error('Failed to fetch LinkedIn posts:', await postsResponse.text());
+      return [];
+    }
+
+    const postsData = await postsResponse.json();
+    const posts = postsData.elements || [];
+
+    return posts.map((post: any) => ({
+      source: 'linkedin',
+      external_id: post.id,
+      author: platform.platform_username,
+      content: post.text?.text || '',
+      url: `https://www.linkedin.com/feed/update/${post.id}`,
+      timestamp: new Date(post.created?.time || Date.now()).toISOString(),
+      engagement_metrics: {
+        likes: post.totalSocialActivityCounts?.numLikes || 0,
+        comments: post.totalSocialActivityCounts?.numComments || 0,
+        shares: post.totalSocialActivityCounts?.numShares || 0,
+      },
+      media_urls: [],
+    }));
+  } catch (error) {
+    console.error('Error scraping LinkedIn:', error);
+    return [];
+  }
 }
 
 async function scrapeDiscord(platform: any): Promise<ScrapedPost[]> {
   console.log(`Scraping Discord for ${platform.platform_username}`);
-  return [];
+  
+  // Discord Bot API implementation
+  const botToken = Deno.env.get('DISCORD_BOT_TOKEN');
+  const channelId = Deno.env.get('DISCORD_CHANNEL_ID');
+  
+  if (!botToken || !channelId) {
+    console.error('Discord Bot Token or Channel ID not configured');
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/messages?limit=10`,
+      {
+        headers: {
+          'Authorization': `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to fetch Discord messages:', await response.text());
+      return [];
+    }
+
+    const messages = await response.json();
+
+    return messages.map((message: any) => ({
+      source: 'discord',
+      external_id: message.id,
+      author: message.author.username,
+      content: message.content,
+      url: `https://discord.com/channels/${message.guild_id || '@me'}/${channelId}/${message.id}`,
+      timestamp: message.timestamp,
+      engagement_metrics: {
+        reactions: message.reactions?.length || 0,
+      },
+      media_urls: message.attachments?.map((att: any) => att.url) || [],
+    }));
+  } catch (error) {
+    console.error('Error scraping Discord:', error);
+    return [];
+  }
 }
 
 async function scrapeGhost(platform: any): Promise<ScrapedPost[]> {
   console.log(`Scraping Ghost for ${platform.platform_username}`);
-  return [];
+  
+  // Ghost Content API implementation
+  const ghostUrl = Deno.env.get('GHOST_BLOG_URL');
+  const contentApiKey = Deno.env.get('GHOST_CONTENT_API_KEY');
+  
+  if (!ghostUrl || !contentApiKey) {
+    console.error('Ghost Blog URL or Content API Key not configured');
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `${ghostUrl}/ghost/api/v3/content/posts/?key=${contentApiKey}&limit=10&include=tags,authors`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to fetch Ghost posts:', await response.text());
+      return [];
+    }
+
+    const data = await response.json();
+    const posts = data.posts || [];
+
+    return posts.map((post: any) => ({
+      source: 'ghost',
+      external_id: post.id,
+      author: post.authors?.[0]?.name || platform.platform_username,
+      content: post.excerpt || post.custom_excerpt || '',
+      url: post.url,
+      timestamp: post.published_at,
+      engagement_metrics: {
+        reading_time: post.reading_time || 0,
+      },
+      media_urls: post.feature_image ? [post.feature_image] : [],
+    }));
+  } catch (error) {
+    console.error('Error scraping Ghost:', error);
+    return [];
+  }
 }

@@ -19,8 +19,6 @@ const getPlatformColor = (platform: string) => {
       return 'bg-blue-500';
     case 'linkedin':
       return 'bg-blue-700';
-    case 'instagram':
-      return 'bg-pink-500';
     case 'discord':
       return 'bg-indigo-500';
     case 'ghost':
@@ -152,6 +150,18 @@ const UnifiedFeed = ({ userId, className = "" }: UnifiedFeedProps) => {
                       <div className="flex items-center gap-1">
                         <Repeat2 className="h-4 w-4" />
                         <span>{post.engagement_metrics.shares || post.engagement_metrics.retweets}</span>
+                      </div>
+                    )}
+                    {post.engagement_metrics.reactions && (
+                      <div className="flex items-center gap-1">
+                        <span>👍</span>
+                        <span>{post.engagement_metrics.reactions}</span>
+                      </div>
+                    )}
+                    {post.engagement_metrics.reading_time && (
+                      <div className="flex items-center gap-1">
+                        <span>📖</span>
+                        <span>{post.engagement_metrics.reading_time} min read</span>
                       </div>
                     )}
                   </div>
