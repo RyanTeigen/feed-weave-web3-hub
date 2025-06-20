@@ -13,18 +13,21 @@ interface Platform {
   last_sync_at?: string;
 }
 
-interface Post {
-  engagement_metrics: {
-    likes?: number;
-    comments?: number;
-    shares?: number;
-  };
+interface SocialPost {
+  id: string;
+  platform_post_id: string;
+  content?: string;
+  media_urls: string[];
+  engagement_metrics: Record<string, any>;
+  posted_at?: string;
+  platform_name: string;
+  platform_username?: string;
 }
 
 interface MainDashboardProps {
   walletAddress: string;
   platforms: Platform[];
-  posts: Post[];
+  posts: SocialPost[];
   isLoading: boolean;
   availablePlatforms: Array<{ name: string; username: string }>;
   handleConnectPlatform: (platformName: string) => Promise<void>;
