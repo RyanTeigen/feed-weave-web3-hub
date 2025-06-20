@@ -40,7 +40,7 @@ const NavigationSidebar = () => {
               />
               <div>
                 <h1 className="text-xl font-bold autheo-gradient-text">
-                  Web3 Hub
+                  SoFee
                 </h1>
                 <p className="text-xs text-slate-500">Decentralized Social</p>
               </div>

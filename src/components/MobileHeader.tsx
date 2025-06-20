@@ -28,7 +28,7 @@ const MobileHeader = ({ sidebarOpen, setSidebarOpen }: MobileHeaderProps) => {
               className="h-8 w-8"
             />
             <h1 className="text-xl font-bold autheo-gradient-text">
-              Web3 Hub
+              SoFee
             </h1>
           </div>
         </div>

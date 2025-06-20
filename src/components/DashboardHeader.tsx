@@ -14,7 +14,7 @@ const DashboardHeader = () => {
         />
         <div>
           <h1 className="text-4xl font-bold autheo-gradient-text">
-            Web3 Social Hub
+            SoFee
           </h1>
           <p className="text-slate-600 mt-2">Your decentralized social media aggregator</p>
         </div>
