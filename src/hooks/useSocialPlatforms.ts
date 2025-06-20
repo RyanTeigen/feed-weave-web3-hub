@@ -63,10 +63,15 @@ export const useSocialPlatforms = () => {
 
       if (error) throw error;
       
-      const formattedPosts = data?.map(post => ({
-        ...post,
+      const formattedPosts: SocialPost[] = data?.map(post => ({
+        id: post.id,
+        platform_post_id: post.platform_post_id,
+        content: post.content || undefined,
+        media_urls: Array.isArray(post.media_urls) ? post.media_urls as string[] : [],
+        engagement_metrics: (post.engagement_metrics as Record<string, any>) || {},
+        posted_at: post.posted_at || undefined,
         platform_name: post.social_platforms.platform_name,
-        platform_username: post.social_platforms.platform_username,
+        platform_username: post.social_platforms.platform_username || undefined,
       })) || [];
       
       setPosts(formattedPosts);
@@ -82,12 +87,24 @@ export const useSocialPlatforms = () => {
 
   const connectPlatform = async (platformName: string, username?: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to connect social platforms",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from('social_platforms')
         .insert({
           platform_name: platformName,
           platform_username: username,
           is_connected: true,
+          user_id: user.id,
         })
         .select()
         .single();
