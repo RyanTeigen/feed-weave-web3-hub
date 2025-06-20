@@ -18,26 +18,45 @@ interface FeedPost {
   };
 }
 
-export const useSocialFeed = (userId?: string) => {
+export const useSocialFeed = (walletAddress?: string) => {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchFeed = async () => {
+    if (!walletAddress) {
+      setPosts([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase.functions.invoke('social-scraper', {
-        body: { 
-          action: 'feed',
-          user_id: userId,
-          limit: 50
-        }
+      const { data, error } = await supabase.rpc('get_feed_by_wallet', {
+        p_wallet_address: walletAddress,
+        p_limit: 50
       });
 
       if (error) throw error;
       
-      setPosts(data || []);
+      // Transform the data to match the expected format
+      const transformedPosts: FeedPost[] = data?.map(post => ({
+        id: post.id,
+        platform_post_id: post.platform_post_id,
+        content: post.content || undefined,
+        media_urls: Array.isArray(post.media_urls) ? post.media_urls as string[] : [],
+        engagement_metrics: (post.engagement_metrics as Record<string, any>) || {},
+        posted_at: post.posted_at || undefined,
+        fetched_at: post.fetched_at,
+        social_platforms: {
+          platform_name: post.platform_name,
+          platform_username: post.platform_username || undefined,
+          user_id: walletAddress, // Use wallet address as user identifier
+        }
+      })) || [];
+      
+      setPosts(transformedPosts);
     } catch (error) {
       console.error('Error fetching social feed:', error);
       toast({
@@ -81,7 +100,7 @@ export const useSocialFeed = (userId?: string) => {
 
   useEffect(() => {
     fetchFeed();
-  }, [userId]);
+  }, [walletAddress]);
 
   return {
     posts,

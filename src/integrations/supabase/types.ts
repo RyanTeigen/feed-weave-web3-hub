@@ -303,6 +303,7 @@ export type Database = {
           platform_username: string | null
           updated_at: string
           user_id: string
+          wallet_address: string | null
         }
         Insert: {
           created_at?: string
@@ -313,6 +314,7 @@ export type Database = {
           platform_username?: string | null
           updated_at?: string
           user_id: string
+          wallet_address?: string | null
         }
         Update: {
           created_at?: string
@@ -323,6 +325,7 @@ export type Database = {
           platform_username?: string | null
           updated_at?: string
           user_id?: string
+          wallet_address?: string | null
         }
         Relationships: []
       }
@@ -547,6 +550,32 @@ export type Database = {
           p_wallet_type?: string
         }
         Returns: string
+      }
+      get_feed_by_wallet: {
+        Args: { p_wallet_address: string; p_limit?: number }
+        Returns: {
+          id: string
+          platform_post_id: string
+          content: string
+          media_urls: Json
+          engagement_metrics: Json
+          posted_at: string
+          fetched_at: string
+          platform_name: string
+          platform_username: string
+        }[]
+      }
+      get_platforms_by_wallet: {
+        Args: { p_wallet_address: string }
+        Returns: {
+          id: string
+          platform_name: string
+          platform_username: string
+          is_connected: boolean
+          last_sync_at: string
+          created_at: string
+          updated_at: string
+        }[]
       }
       verify_web3_signature: {
         Args: {

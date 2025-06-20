@@ -21,7 +21,7 @@ const Index = () => {
     connectPlatform, 
     syncPlatform, 
     refreshData 
-  } = useSocialPlatforms();
+  } = useSocialPlatforms(walletAddress || undefined);
 
   // Available platforms to connect (removed Instagram)
   const availablePlatforms = [

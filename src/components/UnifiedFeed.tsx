@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useSocialFeed } from "@/hooks/useSocialFeed";
 
 interface UnifiedFeedProps {
-  userId?: string;
+  walletAddress?: string;
   className?: string;
 }
 
@@ -28,8 +28,8 @@ const getPlatformColor = (platform: string) => {
   }
 };
 
-const UnifiedFeed = ({ userId, className = "" }: UnifiedFeedProps) => {
-  const { posts, isLoading, fetchFeed, triggerScrape } = useSocialFeed(userId);
+const UnifiedFeed = ({ walletAddress, className = "" }: UnifiedFeedProps) => {
+  const { posts, isLoading, fetchFeed, triggerScrape } = useSocialFeed(walletAddress);
 
   return (
     <div className={`space-y-4 ${className}`}>

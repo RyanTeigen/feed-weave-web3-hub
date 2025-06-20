@@ -22,18 +22,22 @@ interface SocialPost {
   platform_username?: string;
 }
 
-export const useSocialPlatforms = () => {
+export const useSocialPlatforms = (walletAddress?: string) => {
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchPlatforms = async () => {
+    if (!walletAddress) {
+      setPlatforms([]);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('social_platforms')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_platforms_by_wallet', {
+        p_wallet_address: walletAddress
+      });
 
       if (error) throw error;
       setPlatforms(data || []);
@@ -48,18 +52,16 @@ export const useSocialPlatforms = () => {
   };
 
   const fetchPosts = async () => {
+    if (!walletAddress) {
+      setPosts([]);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('social_posts')
-        .select(`
-          *,
-          social_platforms!inner(
-            platform_name,
-            platform_username
-          )
-        `)
-        .order('posted_at', { ascending: false })
-        .limit(50);
+      const { data, error } = await supabase.rpc('get_feed_by_wallet', {
+        p_wallet_address: walletAddress,
+        p_limit: 50
+      });
 
       if (error) throw error;
       
@@ -70,8 +72,8 @@ export const useSocialPlatforms = () => {
         media_urls: Array.isArray(post.media_urls) ? post.media_urls as string[] : [],
         engagement_metrics: (post.engagement_metrics as Record<string, any>) || {},
         posted_at: post.posted_at || undefined,
-        platform_name: post.social_platforms.platform_name,
-        platform_username: post.social_platforms.platform_username || undefined,
+        platform_name: post.platform_name,
+        platform_username: post.platform_username || undefined,
       })) || [];
       
       setPosts(formattedPosts);
@@ -86,25 +88,23 @@ export const useSocialPlatforms = () => {
   };
 
   const connectPlatform = async (platformName: string, username?: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to connect social platforms",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (!walletAddress) {
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet first to use social platforms",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    try {
       const { data, error } = await supabase
         .from('social_platforms')
         .insert({
           platform_name: platformName,
           platform_username: username,
           is_connected: true,
-          user_id: user.id,
+          wallet_address: walletAddress,
         })
         .select()
         .single();
@@ -131,8 +131,11 @@ export const useSocialPlatforms = () => {
 
   const syncPlatform = async (platformId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('sync-social-feeds', {
-        body: { platformId }
+      const { data, error } = await supabase.functions.invoke('social-scraper', {
+        body: { 
+          action: 'scrape',
+          platformId 
+        }
       });
 
       if (error) throw error;
@@ -164,8 +167,14 @@ export const useSocialPlatforms = () => {
       setIsLoading(false);
     };
 
-    loadData();
-  }, []);
+    if (walletAddress) {
+      loadData();
+    } else {
+      setIsLoading(false);
+      setPlatforms([]);
+      setPosts([]);
+    }
+  }, [walletAddress]);
 
   return {
     platforms,
