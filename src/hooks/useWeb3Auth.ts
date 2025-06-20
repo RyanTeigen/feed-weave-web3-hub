@@ -61,6 +61,8 @@ export const useWeb3Auth = () => {
     setAuthState(prev => ({ ...prev, isConnecting: true }));
 
     try {
+      console.log('Starting wallet connection process...');
+      
       // Request account access
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts'
@@ -71,8 +73,10 @@ export const useWeb3Auth = () => {
       }
 
       const walletAddress = accounts[0];
+      console.log('Wallet address obtained:', walletAddress);
 
       // Get nonce from FastAPI backend
+      console.log('Requesting nonce from backend...');
       const nonceResponse = await fetch('http://localhost:8000/auth/nonce', {
         method: 'POST',
         headers: {
@@ -85,17 +89,24 @@ export const useWeb3Auth = () => {
         }),
       });
 
+      console.log('Nonce response status:', nonceResponse.status);
+      
       if (!nonceResponse.ok) {
-        throw new Error('Failed to get nonce');
+        const errorText = await nonceResponse.text();
+        console.error('Nonce request failed:', errorText);
+        throw new Error(`Failed to get nonce: ${nonceResponse.status} ${errorText}`);
       }
 
       const { nonce } = await nonceResponse.json();
+      console.log('Nonce received, requesting signature...');
 
       // Sign the nonce
       const signature = await window.ethereum.request({
         method: 'personal_sign',
         params: [nonce, walletAddress],
       });
+
+      console.log('Signature obtained, verifying with backend...');
 
       // Verify signature and authenticate
       const authResponse = await fetch('http://localhost:8000/auth/verify', {
@@ -111,11 +122,16 @@ export const useWeb3Auth = () => {
         }),
       });
 
+      console.log('Auth response status:', authResponse.status);
+
       if (!authResponse.ok) {
-        throw new Error('Authentication failed');
+        const errorText = await authResponse.text();
+        console.error('Authentication failed:', errorText);
+        throw new Error(`Authentication failed: ${authResponse.status} ${errorText}`);
       }
 
       const authData: Web3AuthResponse = await authResponse.json();
+      console.log('Authentication successful!');
 
       // Store authentication data
       localStorage.setItem('web3_access_token', authData.access_token);
@@ -138,9 +154,19 @@ export const useWeb3Auth = () => {
       console.error('Web3 authentication error:', error);
       setAuthState(prev => ({ ...prev, isConnecting: false }));
       
+      let errorMessage = "Failed to connect wallet";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = "Cannot connect to backend server. Please ensure your FastAPI server is running on http://localhost:8000";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect wallet",
+        description: errorMessage,
         variant: "destructive",
       });
 
