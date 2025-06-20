@@ -10,11 +10,11 @@ import NavigationSidebar from "@/components/NavigationSidebar";
 import RealSocialFeedCard from "@/components/RealSocialFeedCard";
 import UnifiedFeed from "@/components/UnifiedFeed";
 import { useSocialPlatforms } from "@/hooks/useSocialPlatforms";
+import { useWeb3AuthContext } from "@/contexts/Web3AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+  const { isConnected, walletAddress, user } = useWeb3AuthContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   
@@ -36,7 +36,7 @@ const Index = () => {
   ];
 
   const handleConnectPlatform = async (platformName: string) => {
-    if (!isWalletConnected) {
+    if (!isConnected) {
       toast({
         title: "Wallet Required",
         description: "Please connect your wallet first to use social media features",
@@ -94,14 +94,7 @@ const Index = () => {
               </h1>
             </div>
           </div>
-          <ConnectWallet 
-            isConnected={isWalletConnected}
-            onConnect={(address) => {
-              setIsWalletConnected(true);
-              setWalletAddress(address);
-            }}
-            walletAddress={walletAddress}
-          />
+          <ConnectWallet />
         </div>
       </div>
 
@@ -137,21 +130,14 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <ConnectWallet 
-                isConnected={isWalletConnected}
-                onConnect={(address) => {
-                  setIsWalletConnected(true);
-                  setWalletAddress(address);
-                }}
-                walletAddress={walletAddress}
-              />
+              <ConnectWallet />
               <Button variant="outline" size="icon" className="border-cyan-300 hover:bg-cyan-50 mobile-touch">
                 <Settings className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {!isWalletConnected ? (
+          {!isConnected ? (
             // Welcome Screen
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
               <div className="bg-white/70 backdrop-blur-sm border border-cyan-200/50 rounded-2xl p-8 lg:p-12 max-w-2xl shadow-lg">
@@ -182,7 +168,7 @@ const Index = () => {
             // Main Dashboard
             <div className="space-y-6 lg:space-y-8">
               {/* Profile Stats */}
-              <ProfileStats walletAddress={walletAddress} />
+              <ProfileStats walletAddress={walletAddress || ''} />
 
               {/* Quick Actions */}
               <Card className="bg-white/70 backdrop-blur-sm border-cyan-200/50 shadow-lg">
@@ -225,7 +211,7 @@ const Index = () => {
               </Card>
 
               {/* Unified Social Feed */}
-              <UnifiedFeed userId={walletAddress} />
+              <UnifiedFeed userId={walletAddress || ''} />
 
               {/* Social Feeds Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
